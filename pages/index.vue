@@ -23,6 +23,27 @@ const fileCategories = ref({
 const previewFile = ref(null);
 const showPreview = ref(false);
 
+const deleteFile = async (file) => {
+    const userId = user.value?.id;
+    if (!userId) return;
+
+    const filePath = `${userId}/${file.name}`;
+    const category = file.category;
+
+    const { error } = await client
+        .storage
+        .from(category)
+        .remove([filePath]);
+
+    if (error) {
+        console.error(`Error al eliminar archivo`, error.message);
+    } else {
+        fileCategories.value[category] = fileCategories.value[category].filter(f => f.name !== file.name);
+        console.log(`Archivo eliminado correctamente`);
+    }
+};
+
+
 const uploadDocument = async () => {
     if (!documentFile.value) {
         documentUploadError.value = 'Por favor, selecciona un archivo.';
@@ -35,7 +56,7 @@ const uploadDocument = async () => {
     const userId = user.value?.id;
 
     if (!userId) {
-        documentUploadError.value = 'Usuario no autenticado.';
+        documentUploadError.value = 'Debes iniciar sesión';
         isUploadingDocument.value = false;
         return;
     }
@@ -108,7 +129,7 @@ const logout = async () => {
         console.error('Error al cerrar sesión:', error);
     } else {
         userName.value = '';
-        
+
     }
 };
 
@@ -117,7 +138,7 @@ const getFileType = (fileName) => {
     const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
     const audioExtensions = ['mp3', 'wav', 'ogg', 'aac', 'm4a'];
     const videoExtensions = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
-    
+
     if (imageExtensions.includes(extension)) return 'image';
     if (audioExtensions.includes(extension)) return 'audio';
     if (videoExtensions.includes(extension)) return 'video';
@@ -126,18 +147,16 @@ const getFileType = (fileName) => {
 
 const listUserFiles = async () => {
     loadingFiles.value = true;
-    // Resetear todas las categorías
     fileCategories.value = {
         documents: [],
         images: [],
         audios: [],
         videos: []
     };
-    
+
     const userId = user.value?.id;
 
     if (userId) {
-        // Cargar todos los tipos de archivos simultáneamente
         await Promise.all(fileTypes.map(async (fileType) => {
             const { data, error } = await client
                 .storage
@@ -152,25 +171,24 @@ const listUserFiles = async () => {
                         .storage
                         .from(fileType.value)
                         .getPublicUrl(`${userId}/${file.name}`);
-                    
+
                     const detectedType = getFileType(file.name);
-                    
-                    return { 
-                        ...file, 
+
+                    return {
+                        ...file,
                         url: urlData.publicUrl,
                         type: detectedType,
                         category: fileType.value
                     };
                 }));
-                
-                // Asignar archivos a su categoría correspondiente
+
                 fileCategories.value[fileType.value] = filesWithUrls;
             }
         }));
     } else {
         console.warn('Usuario no autenticado, no se pueden listar los archivos.');
     }
-    
+
     loadingFiles.value = false;
 };
 
@@ -250,30 +268,40 @@ onMounted(async () => {
                         Tus Archivos Subidos
                         <Icon name="material-symbols:folder-open" class="ml-2 text-gray-700 text-lg" />
                     </h2>
-                   
-                    <div v-if="loadingFiles" class="text-center text-gray-500 py-4 bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-4 border border-gray-300">
+
+                    <div v-if="loadingFiles"
+                        class="text-center text-gray-500 py-4 bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-4 border border-gray-300">
                         Cargando archivos...
                     </div>
-                   
+
                     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
+                        <div
+                            class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
                             <div class="flex items-center mb-3">
                                 <Icon :name="fileTypes[0].icon" class="text-pink-700 text-xl mr-2" />
                                 <h3 class="font-semibold text-pink-700">{{ fileTypes[0].name }}</h3>
                             </div>
-                            
+
                             <div v-if="fileCategories.documents.length > 0">
                                 <ul class="list-none pl-0">
                                     <li v-for="file in fileCategories.documents" :key="file.name"
                                         class="py-3 border-b border-gray-200 last:border-b-0">
                                         <div class="flex justify-between items-center">
-                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name }}</span>
-                                            <div>
+                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name
+                                                }}</span>
+                                            <div class="flex items-center space-x-2">
+                                                
                                                 <a :href="file.url" target="_blank" download
                                                     class="text-pink-600 hover:text-pink-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:download" class="inline-block mr-1 text-lg" />
+                                                    <Icon name="material-symbols:download"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Descargar
                                                 </a>
+                                                <button @click="deleteFile(file)"
+                                                    class="text-red-600 hover:text-red-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:delete"
+                                                        class="inline-block mr-1 text-lg" />  
+                                                </button>
                                             </div>
                                         </div>
                                     </li>
@@ -284,35 +312,46 @@ onMounted(async () => {
                             </div>
                         </div>
 
-                        
-                        <div class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
+
+                        <div
+                            class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
                             <div class="flex items-center mb-3">
                                 <Icon :name="fileTypes[1].icon" class="text-purple-700 text-xl mr-2" />
                                 <h3 class="font-semibold text-purple-700">{{ fileTypes[1].name }}</h3>
                             </div>
-                            
+
                             <div v-if="fileCategories.images.length > 0">
                                 <ul class="list-none pl-0">
                                     <li v-for="file in fileCategories.images" :key="file.name"
                                         class="py-3 border-b border-gray-200 last:border-b-0">
                                         <div class="flex justify-between items-center mb-2">
-                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name }}</span>
+                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name
+                                                }}</span>
                                             <div class="flex space-x-2">
                                                 <button @click="openPreview(file)"
-                                                    class="text-purple-600 hover:text-purple-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:preview" class="inline-block mr-1 text-lg" />
+                                                    class="text-purple-600 hover:text-purple-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:preview"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Ver
                                                 </button>
                                                 <a :href="file.url" target="_blank" download
                                                     class="text-pink-600 hover:text-pink-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:download" class="inline-block mr-1 text-lg" />
+                                                    <Icon name="material-symbols:download"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Descargar
                                                 </a>
+                                                <button @click="deleteFile(file)"
+                                                    class="text-red-600 hover:text-red-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:delete"
+                                                        class="inline-block mr-1 text-lg" />  
+                                                </button>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="mt-2">
-                                            <img :src="file.url" alt="Miniatura" class="h-20 object-contain rounded-md shadow-md cursor-pointer" @click="openPreview(file)" />
+                                            <img :src="file.url" alt="Miniatura"
+                                                class="h-20 object-contain rounded-md shadow-md cursor-pointer"
+                                                @click="openPreview(file)" />
                                         </div>
                                     </li>
                                 </ul>
@@ -322,32 +361,41 @@ onMounted(async () => {
                             </div>
                         </div>
 
-                        <div class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
+                        <div
+                            class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
                             <div class="flex items-center mb-3">
                                 <Icon :name="fileTypes[2].icon" class="text-indigo-700 text-xl mr-2" />
                                 <h3 class="font-semibold text-indigo-700">{{ fileTypes[2].name }}</h3>
                             </div>
-                            
+
                             <div v-if="fileCategories.audios.length > 0">
                                 <ul class="list-none pl-0">
                                     <li v-for="file in fileCategories.audios" :key="file.name"
                                         class="py-3 border-b border-gray-200 last:border-b-0">
                                         <div class="flex justify-between items-center mb-2">
-                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name }}</span>
+                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name
+                                                }}</span>
                                             <div class="flex space-x-2">
                                                 <button @click="openPreview(file)"
                                                     class="text-indigo-600 hover:text-indigo-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:preview" class="inline-block mr-1 text-lg" />
+                                                    <Icon name="material-symbols:preview"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Reproducir
                                                 </button>
                                                 <a :href="file.url" target="_blank" download
                                                     class="text-pink-600 hover:text-pink-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:download" class="inline-block mr-1 text-lg" />
+                                                    <Icon name="material-symbols:download"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Descargar
                                                 </a>
+                                                <button @click="deleteFile(file)"
+                                                    class="text-red-600 hover:text-red-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:delete"
+                                                        class="inline-block mr-1 text-lg" />  
+                                                </button>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="mt-2">
                                             <audio controls class="w-full h-8">
                                                 <source :src="file.url" type="audio/mpeg">
@@ -362,34 +410,44 @@ onMounted(async () => {
                             </div>
                         </div>
 
-                        <div class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
+                        <div
+                            class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300">
                             <div class="flex items-center mb-3">
                                 <Icon :name="fileTypes[3].icon" class="text-blue-700 text-xl mr-2" />
                                 <h3 class="font-semibold text-blue-700">{{ fileTypes[3].name }}</h3>
                             </div>
-                            
+
                             <div v-if="fileCategories.videos.length > 0">
                                 <ul class="list-none pl-0">
                                     <li v-for="file in fileCategories.videos" :key="file.name"
                                         class="py-3 border-b border-gray-200 last:border-b-0">
                                         <div class="flex justify-between items-center mb-2">
-                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name }}</span>
+                                            <span class="text-gray-700 font-medium truncate max-w-xs">{{ file.name
+                                                }}</span>
                                             <div class="flex space-x-2">
                                                 <button @click="openPreview(file)"
-                                                    class="text-blue-600 hover:text-blue-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:preview" class="inline-block mr-1 text-lg" />
+                                                    class="text-blue-600 hover:text-blue-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:preview"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Reproducir
                                                 </button>
                                                 <a :href="file.url" target="_blank" download
                                                     class="text-pink-600 hover:text-pink-800 font-medium flex items-center">
-                                                    <Icon name="material-symbols:download" class="inline-block mr-1 text-lg" />
+                                                    <Icon name="material-symbols:download"
+                                                        class="inline-block mr-1 text-lg" />
                                                     Descargar
                                                 </a>
+                                                <button @click="deleteFile(file)"
+                                                    class="text-red-600 hover:text-red-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:delete"
+                                                        class="inline-block mr-1 text-lg" />  
+                                                </button>
                                             </div>
                                         </div>
-                                       
+
                                         <div class="mt-2">
-                                            <video class="h-24 w-full object-cover rounded-md shadow-md cursor-pointer" @click="openPreview(file)">
+                                            <video class="h-24 w-full object-cover rounded-md shadow-md cursor-pointer"
+                                                @click="openPreview(file)">
                                                 <source :src="file.url" type="video/mp4">
                                                 Tu navegador no soporta la reproducción de video.
                                             </video>
@@ -405,7 +463,8 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <div v-if="showPreview" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div v-if="showPreview"
+                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-auto">
                     <div class="p-4 border-b border-gray-200 flex justify-between items-center">
                         <h3 class="font-semibold text-lg text-gray-700">{{ previewFile?.name }}</h3>
@@ -414,23 +473,30 @@ onMounted(async () => {
                         </button>
                     </div>
                     <div class="p-4 flex justify-center">
-                        
-                        <img v-if="previewFile?.type === 'image'" :src="previewFile?.url" alt="Preview" class="max-h-96 max-w-full object-contain" />
-                        
+
+                        <img v-if="previewFile?.type === 'image'" :src="previewFile?.url" alt="Preview"
+                            class="max-h-96 max-w-full object-contain" />
+
                         <audio v-if="previewFile?.type === 'audio'" controls class="w-full">
                             <source :src="previewFile?.url" type="audio/mpeg">
                             Tu navegador no soporta la reproducción de audio.
                         </audio>
-                        
+
                         <video v-if="previewFile?.type === 'video'" controls class="max-h-96 max-w-full">
                             <source :src="previewFile?.url" type="video/mp4">
                             Tu navegador no soporta la reproducción de video.
                         </video>
                     </div>
                     <div class="p-4 border-t border-gray-200 flex justify-end">
-                        <a :href="previewFile?.url" download class="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600">
+                        <a :href="previewFile?.url" download
+                            class="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600">
                             Descargar
                         </a>
+                        <button @click="deleteFile(file)"
+                                                    class="text-red-600 hover:text-red-800 cursor-pointer font-medium flex items-center">
+                                                    <Icon name="material-symbols:delete"
+                                                        class="inline-block mr-1 text-lg" />  
+                                                </button>
                     </div>
                 </div>
             </div>
