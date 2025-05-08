@@ -108,7 +108,7 @@ const logout = async () => {
         console.error('Error al cerrar sesión:', error);
     } else {
         userName.value = '';
-        router.push('/login');
+        
     }
 };
 
