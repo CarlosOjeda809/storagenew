@@ -1,7 +1,7 @@
 <script setup>
 const client = useSupabaseClient();
 const user = useSupabaseUser();
-const users = ref({}); 
+const users = ref({});
 const isLoading = ref(true);
 const errorMsg = ref(null);
 
@@ -29,6 +29,15 @@ const userData = async () => {
     }
 };
 
+const cerrarSesion = async () => {
+    try {
+        await client.auth.signOut();
+        navigateTo('/login');
+    } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+    }
+};
+
 onMounted(async () => {
     if (user.value?.id) {
         await userData();
@@ -41,79 +50,152 @@ onMounted(async () => {
 
 <template>
   <div class="flex flex-col bg-gradient-to-br from-pink-100 via-purple-200 to-indigo-200 min-h-screen">
-    <nav class="text-pink-800 px-6 py-3 bg-gray-100/50 bg-opacity-75 backdrop-blur-sm flex justify-between items-center shadow-sm">
-      <div class="p-2 rounded-lg">
-        <h1 class="text-xl font-semibold text-pink-600">UPLOAD IT</h1>
+   
+    <nav class="px-6 py-3 bg-white bg-opacity-75 backdrop-blur-md flex justify-between items-center shadow-md">
+      <div class="p-2">
+        <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">UPLOAD IT</h1>
       </div>
-      <div class="space-x-3">
+      <div class="flex space-x-3">
         <button @click="navigateTo('/')"
-          class="bg-pink-200 bg-opacity-50 py-1.5 cursor-pointer px-3 rounded-md font-medium text-pink-700 hover:bg-pink-300 hover:bg-opacity-75">
+          class="bg-gradient-to-r from-pink-400 to-pink-500 py-2 px-4 rounded-lg font-medium text-white cursor-pointer hover:opacity-90 transition duration-300 shadow-sm flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
           INICIO
         </button>
-        <button @click="client.auth.signOut(); navigateTo('/login')"
-          class="bg-purple-200 bg-opacity-50 py-1.5 cursor-pointer px-3 rounded-md font-medium text-pink-700 hover:bg-purple-300 hover:bg-opacity-75">
-          CERRAR SESIÓN
+        <button @click="cerrarSesion"
+          class="bg-gradient-to-r from-purple-400 to-purple-500 py-2 px-4 rounded-lg font-medium text-white hover:opacity-90 cursor-pointer transition duration-300 shadow-sm flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          SALIR
         </button>
       </div>
     </nav>
 
-    <main class="flex-grow container mx-auto p-4 flex flex-col items-center">
-      <div class="mb-4 text-center">
-        <h1 class="text-4xl font-bold text-white drop-shadow-md">PERFIL</h1>
-        <p class="text-lg text-white mt-1 opacity-90">Tu información personal</p>
-      </div>
+    <main class="flex-grow container mx-auto p-4 flex flex-col items-center justify-center">
       
-      
-      <div v-if="isLoading" class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300 w-full max-w-md md:max-w-lg text-center py-10">
-        <div class="flex justify-center">
-          <div class="h-12 w-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <p class="mt-4 text-pink-700">Cargando tu perfil...</p>
-      </div>
-      <div v-else-if="errorMsg" class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-red-200 w-full max-w-md md:max-w-lg">
-        <div class="bg-red-100 text-red-700 px-4 py-3 rounded-lg text-center">
-          {{ errorMsg }}
-        </div>
-        <div class="mt-4 text-center">
-          <button @click="navigateTo('/login')" 
-            class="mt-2 p-3 bg-pink-500 text-white font-semibold rounded-md hover:bg-pink-600 transition duration-300">
-            Ir a Login
-          </button>
+      <div v-if="isLoading" class="w-full max-w-md">
+        <div class="bg-white bg-opacity-80 backdrop-blur-md rounded-xl shadow-xl p-8 border border-white text-center">
+          <div class="flex justify-center mb-3">
+            <div class="h-14 w-14 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p class="text-pink-700 font-medium text-lg">Cargando tu perfil...</p>
         </div>
       </div>
 
-      <div v-else-if="user" class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300 w-full max-w-md md:max-w-lg">
-        <h2 class="text-2xl font-semibold text-center mb-6 text-pink-700">
-          Información Personal
-        </h2>
-        
-        <div class="space-y-6">
-          <div class="bg-pink-50 rounded-lg p-4 border border-pink-200">
-            <div class="text-gray-600 mb-1 font-medium">Nombre:</div>
-            <div class="text-pink-800 font-semibold text-lg">{{ users?.nombre || 'No especificado' }}</div>
+      
+      <div v-else-if="errorMsg" class="w-full max-w-md">
+        <div class="bg-white bg-opacity-80 backdrop-blur-md rounded-xl shadow-xl p-8 border border-red-100">
+          <div class="text-center mb-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-gray-700 mb-2">Ha ocurrido un problema</h2>
+            <p class="text-red-600 mb-4">{{ errorMsg }}</p>
           </div>
-          
-          <div class="bg-pink-50 rounded-lg p-4 border border-pink-200">
-            <div class="text-gray-600 mb-1 font-medium">Email:</div>
-            <div class="text-pink-800">{{ users?.email || 'No especificado' }}</div>
-          </div>
-          
-          <div class="mt-6 text-center">
-            <button @click="navigateTo('/')" 
-              class="w-full p-3 md:p-4 bg-pink-500 text-white font-semibold rounded-md hover:bg-pink-600 transition duration-300 cursor-pointer flex items-center justify-center">
-              IR A INICIO
+          <div class="text-center">
+            <button @click="navigateTo('/login')" 
+              class="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-lg hover:opacity-90 transition duration-300 shadow-md flex items-center justify-center mx-auto">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+              </svg>
+              Ir a Login
             </button>
           </div>
         </div>
       </div>
+
       
-      <div v-else class="bg-white bg-opacity-60 backdrop-blur-sm rounded-md shadow-sm p-8 border border-gray-300 w-full max-w-md md:max-w-lg text-center">
-        <p class="text-pink-700 mb-4">No estás autenticado.</p>
-        <button @click="navigateTo('/login')" 
-          class="p-3 bg-pink-500 text-white font-semibold rounded-md hover:bg-pink-600 transition duration-300">
-          Ir a Login
-        </button>
+      <div v-else-if="user" class="w-full max-w-md">
+        <div class="mb-6 text-center">
+          <h1 class="text-4xl font-bold text-white drop-shadow-md">MI PERFIL</h1>
+          <p class="text-lg text-white mt-1 opacity-90">Tu información personal</p>
+        </div>
+        
+        <div class="bg-white bg-opacity-80 backdrop-blur-md rounded-xl shadow-xl p-8 border border-white">
+          
+          <div class="flex justify-center mb-6">
+            <div class="w-24 h-24 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center shadow-lg text-white text-3xl font-bold">
+              {{ users?.nombre?.charAt(0)?.toUpperCase() || 'U' }}
+            </div>
+          </div>
+          
+          <h2 class="text-2xl font-bold text-center mb-6 text-pink-600">
+            {{ users?.nombre || 'Usuario' }}
+          </h2>
+          
+          <div class="space-y-6">
+            <div class="bg-pink-50 rounded-lg p-5 border border-pink-100 shadow-sm">
+              <div class="flex items-center">
+                <div class="bg-pink-100 p-2 rounded-lg mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-gray-500 text-sm font-medium">Nombre</div>
+                  <div class="text-gray-800 font-semibold text-lg">{{ users?.nombre || 'No especificado' }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-purple-50 rounded-lg p-5 border border-purple-100 shadow-sm">
+              <div class="flex items-center">
+                <div class="bg-purple-100 p-2 rounded-lg mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="text-gray-500 text-sm font-medium">Email</div>
+                  <div class="text-gray-800 font-semibold">{{ users?.email || 'No especificado' }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="mt-8">
+              <button @click="navigateTo('/')" 
+                class="w-full p-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-bold rounded-lg hover:opacity-90 transition duration-300 cursor-pointer flex items-center justify-center shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                IR A INICIO
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else class="w-full max-w-md">
+        <div class="bg-white bg-opacity-80 backdrop-blur-md rounded-xl shadow-xl p-8 border border-white text-center">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-gray-700 mb-2">Acceso restringido</h2>
+          <p class="text-gray-600 mb-6">No has iniciado sesión. Por favor, accede a tu cuenta para ver tu perfil.</p>
+          <button @click="navigateTo('/login')" 
+            class="px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-500 text-white font-semibold rounded-lg hover:opacity-90 transition duration-300 shadow-md flex items-center justify-center mx-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            Iniciar sesión
+          </button>
+        </div>
       </div>
     </main>
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+</style>

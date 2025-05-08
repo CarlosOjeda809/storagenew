@@ -231,7 +231,7 @@ onMounted(async () => {
             class="text-pink-800 px-6 py-4 bg-white/80 backdrop-blur-md flex justify-between items-center shadow-md sticky top-0 z-10">
             <div class="flex items-center space-x-2">
                 <div class="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-2 rounded-lg shadow-md">
-                    <Icon name="material-symbols:cloud-upload" class="text-xl" />
+                    <Icon name="material-symbols:cloud-upload" class="text-xl icon-margin-fix" />
                 </div>
                 <h1
                     class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-700 bg-clip-text text-transparent">
@@ -239,17 +239,20 @@ onMounted(async () => {
             </div>
             <div class="flex items-center space-x-3">
                 <button v-if="!user" @click="navigateTo('/login')"
-                    class="bg-gradient-to-r from-pink-500 to-purple-600 text-white py-2 px-4 rounded-md font-medium hover:shadow-lg transition duration-200">
+                    class="bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer text-white py-2 px-4 rounded-md font-medium hover:shadow-lg transition duration-200">
                     INICIAR SESIÓN
                 </button>
                 <button v-if="user" @click="navigateTo('/profile')"
-                    class="bg-pink-100 text-pink-700 py-2 px-4 rounded-md font-medium hover:bg-pink-200 transition duration-200 flex items-center">
-                    <Icon name="material-symbols:person" class="mr-2" />
-                    {{ userName }}
+                    class="bg-pink-100 text-pink-700 py-2 px-3 rounded-md font-medium hover:bg-pink-200 transition duration-200 flex items-center">
+                    <Icon name="material-symbols:person" class="text-xl" />
                 </button>
                 <button v-if="user" @click="logout()"
-                    class="bg-purple-100 text-purple-700 py-2 px-4 rounded-md font-medium hover:bg-purple-200 transition duration-200">
-                    CERRAR SESIÓN
+                    class="bg-purple-100 text-purple-700 p-2 cursor-pointer rounded-md font-medium hover:bg-purple-200 transition duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
                 </button>
             </div>
         </nav>
@@ -260,19 +263,19 @@ onMounted(async () => {
                 <h2 class="text-2xl font-bold text-gray-800 mb-3">Inicia sesión para gestionar tus archivos</h2>
                 <p class="text-gray-600 mb-6">Necesitas iniciar sesión para subir y administrar tus archivos.</p>
                 <button @click="navigateTo('/login')"
-                    class="bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 px-6 rounded-md font-medium hover:shadow-lg transition duration-200">
+                    class="bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer text-white py-3 px-6 rounded-md font-medium hover:shadow-xl hover:-translate-y-0.5 transition duration-200">
                     INICIAR SESIÓN
                 </button>
             </div>
 
             <div v-if="user">
-                <!-- Tabs -->
+
                 <div class="bg-white/70 backdrop-blur-md rounded-xl shadow-lg mt-6 overflow-hidden">
                     <div class="flex border-b border-gray-200">
                         <button @click="activeTab = 'upload'"
-                            :class="['flex-1 py-4 text-center font-medium transition duration-200',
+                            :class="['flex-1 py-4 text-center cursor-pointer font-medium transition duration-200',
                                 activeTab === 'upload' ? 'text-pink-600 border-b-2 border-pink-500' : 'text-gray-600 hover:text-pink-500']">
-                            <div class="flex items-center justify-center">
+                            <div class="flex items-center  justify-center">
                                 <Icon name="material-symbols:upload" class="mr-2" />
                                 Subir Archivos
                             </div>
@@ -280,7 +283,7 @@ onMounted(async () => {
                         <button @click="activeTab = 'files'"
                             :class="['flex-1 py-4 text-center font-medium transition duration-200',
                                 activeTab === 'files' ? 'text-pink-600 border-b-2 border-pink-500' : 'text-gray-600 hover:text-pink-500']">
-                            <div class="flex items-center justify-center">
+                            <div class="flex items-center cursor-pointer justify-center">
                                 <Icon name="material-symbols:folder" class="mr-2" />
                                 Mis Archivos
                                 <span v-if="totalFiles > 0"
@@ -317,7 +320,7 @@ onMounted(async () => {
                                         <Icon name="material-symbols:insert-drive-file" class="text-pink-500 mr-2" />
                                         <div>
                                             <p class="font-medium text-gray-800 truncate max-w-xs">{{ documentFile.name
-                                            }}</p>
+                                                }}</p>
                                             <p class="text-sm text-gray-500">{{ formatFileSize(documentFile.size) }}</p>
                                         </div>
                                     </div>
@@ -432,7 +435,7 @@ onMounted(async () => {
                                                         <Icon name="material-symbols:download" />
                                                     </a>
                                                     <button @click="deleteFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition">
+                                                        class="p-2 text-gray-600 hover:text-red-600 cursor-pointer hover:bg-red-50 rounded-full transition">
                                                         <Icon name="material-symbols:delete" />
                                                     </button>
                                                 </div>
@@ -472,7 +475,7 @@ onMounted(async () => {
                                                     <Icon name="material-symbols:download" class="text-sm" />
                                                 </a>
                                                 <button @click.stop="deleteFile(file)"
-                                                    class="p-1 bg-white/80 text-red-600 m-1 rounded-full hover:bg-white transition">
+                                                    class="p-1 bg-white/80 text-red-600 m-1 rounded-full cursor-pointer hover:bg-white transition">
                                                     <Icon name="material-symbols:delete" class="text-sm" />
                                                 </button>
                                             </div>
@@ -512,7 +515,7 @@ onMounted(async () => {
                                                         <Icon name="material-symbols:download" />
                                                     </a>
                                                     <button @click="deleteFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition">
+                                                        class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition">
                                                         <Icon name="material-symbols:delete" />
                                                     </button>
                                                 </div>
@@ -545,7 +548,7 @@ onMounted(async () => {
                                                     Tu navegador no soporta la reproducción de video.
                                                 </video>
                                                 <div
-                                                    class="absolute inset-0 flex items-center justify-center group-hover:bg-black/30 transition">
+                                                    class="absolute inset-0 flex    items-center justify-center group-hover:bg-black/30 transition">
                                                     <button @click="openPreview(file)"
                                                         class="bg-white/90 p-3 rounded-full text-blue-600 transform scale-90 group-hover:scale-100 transition">
                                                         <Icon name="material-symbols:play-arrow" class="text-xl" />
@@ -554,14 +557,14 @@ onMounted(async () => {
                                             </div>
                                             <div class="p-3 flex justify-between items-center">
                                                 <span class="font-medium text-gray-800 truncate max-w-xs">{{ file.name
-                                                }}</span>
+                                                    }}</span>
                                                 <div class="flex space-x-1">
                                                     <a :href="file.url" target="_blank" download
                                                         class="p-1.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
                                                         <Icon name="material-symbols:download" class="text-sm" />
                                                     </a>
                                                     <button @click="deleteFile(file)"
-                                                        class="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition">
+                                                        class="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition">
                                                         <Icon name="material-symbols:delete" class="text-sm" />
                                                     </button>
                                                 </div>
@@ -604,7 +607,7 @@ onMounted(async () => {
 
                     <div class="p-4 border-t border-gray-200 flex justify-end space-x-3">
                         <button @click="deleteFile(previewFile)"
-                            class="px-4 py-2 border border-red-200 text-red-600 rounded-md hover:bg-red-50 flex items-center transition">
+                            class="px-4 py-2 border border-red-200 text-red-600 rounded-md cursor-pointer hover:bg-red-50 flex items-center transition">
                             <Icon name="material-symbols:delete" class="mr-2" />
                             Eliminar
                         </button>
@@ -619,3 +622,9 @@ onMounted(async () => {
         </main>
     </div>
 </template>
+
+<style scoped>
+.icon-margin-fix {
+    vertical-align: bottom;
+}
+</style>
