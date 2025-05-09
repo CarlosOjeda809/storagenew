@@ -1,5 +1,8 @@
 <script setup>
+import { Icon } from '#components'
+
 const client = useSupabaseClient()
+const user = useSupabaseUser()
 const router = useRouter()
 const emailData = ref('')
 const contraseñaData = ref('')
@@ -28,6 +31,74 @@ const loginDatos = async () => {
 
         errorMsg.value = ''
         router.push('/')
+    } catch (e) {
+        errorMsg.value = 'Error inesperado. Inténtalo de nuevo.'
+    } finally {
+        isLoading.value = false;
+    }
+}
+
+const loginConGoogle = async () => {
+    isLoading.value = true;
+    try {
+        const { user, session, error } = await client.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin
+            }
+        });
+
+        if (error) {
+            console.error('Error al iniciar sesión con Google:', error);
+            errorMsg.value = error.message;
+            return false;
+        }
+
+        
+        if (user) {
+            const { data, error } = await client
+                .from('users')
+                .select('nombre, email')
+                .eq('id', user.id)
+                .single();
+
+            if (!data) {
+                
+                await client.from('users').insert({
+                    id: user.id,
+                    nombre: user.user_metadata?.full_name || '',
+                    email: user.email
+                });
+            }
+        }
+
+        errorMsg.value = ''
+        router.push('/')
+    } catch (e) {
+        errorMsg.value = 'Error inesperado. Inténtalo de nuevo.'
+    } finally {
+        isLoading.value = false;
+    }
+}
+
+
+const loginConGithub = async () => {
+    isLoading.value = true;
+    try {
+        const { data, error } = await client.auth.signInWithOAuth({
+            provider: 'github',
+            options: {
+                redirectTo: window.location.origin
+            }
+        });
+        
+        if (error) {
+            console.error('Error al iniciar sesión con Github:', error);
+            errorMsg.value = error.message;
+            return false;
+        }
+
+        errorMsg.value = ''
     } catch (e) {
         errorMsg.value = 'Error inesperado. Inténtalo de nuevo.'
     } finally {
@@ -89,6 +160,21 @@ const loginDatos = async () => {
                                     </svg>
                                 </span>
                                 <span>INICIAR SESIÓN</span>
+                            </button>
+                        </div>
+
+                        <div class="flex justify-center space-x-4 my-4 ">
+                            <button @click="loginConGoogle"
+                                class="w-full p-4 bg-white cursor-pointer border border-pink-300 text-pink-600 rounded-lg hover:bg-pink-100 transition duration-300 flex items-center justify-center shadow-md">
+                                <Icon name="ion:logo-google" class="mr-1"/>
+                                Iniciar con Google
+                            </button>
+                        </div>
+                        <div class="flex justify-center space-x-4 my-4 ">
+                            <button @click="loginConGithub"
+                                class="w-full p-4  cursor-pointer border border-pink-300 text-pink-600 rounded-lg hover:bg-pink-100 transition duration-300 flex items-center justify-center shadow-md">
+                                <Icon name="tabler:brand-github" class="mr-1"/>
+                                Iniciar con Github
                             </button>
                         </div>
 

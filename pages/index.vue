@@ -1,12 +1,31 @@
 <script setup>
-const client = useSupabaseClient();
-const documentFile = ref('');
-const isUploadingDocument = ref(false);
-const documentUploadError = ref('');
-const user = useSupabaseUser();
-const userName = ref('');
+import { auth } from '@/composables/auth';
+import { filemanager } from '@/composables/filemanager';
+import { filepreview } from '@/composables/filepreview';
+import { fileupload } from '@/composables/fileupload';
+
+const { user, userName, getUserName, logout: logoutUser } = auth();
+const {
+    fileCategories,
+    loadingFiles,
+    listUserFiles,
+    archiveFile,
+    deleteFile,
+    getCategoryCount,
+    totalFiles,
+    formatFileSize,
+    getFileType
+} = filemanager(user); 
+const { previewFile, showPreview, openPreview, closePreview } = filepreview();
+const {
+    documentFile,
+    isUploadingDocument,
+    documentUploadError,
+    uploadDocument: uploadFile
+} = fileupload(user, listUserFiles); 
+
 const router = useRouter();
-const loadingFiles = ref(false);
+const activeTab = ref('upload');
 const fileTypes = [
     { name: 'Documentos', value: 'documents', icon: 'material-symbols:description' },
     { name: 'Imágenes', value: 'images', icon: 'material-symbols:image' },
@@ -14,279 +33,17 @@ const fileTypes = [
     { name: 'Videos', value: 'videos', icon: 'material-symbols:video-file' },
     { name: 'Archivados', value: 'archivados', icon: 'material-symbols:archive' }
 ];
-const fileCategories = ref({
-    documents: [],
-    images: [],
-    audios: [],
-    videos: []
-});
-const previewFile = ref(null);
-const showPreview = ref(false);
-const activeTab = ref('upload');
-
-const archiveFile = async (file) => {
-    const userId = user.value?.id;
-    if (!userId) return;
-
-    const sourceCategory = file.category;
-    const originalFilePath = `${userId}/${file.name}`;
-    const destinationFilePath = `${userId}/${file.name}`;
-
-    const { data: fileData, error: downloadError } = await client
-        .storage
-        .from(sourceCategory)
-        .download(originalFilePath);
-
-    if (downloadError) {
-        console.error(`Error al descargar el archivo para archivar`, downloadError.message);
-        return;
-    }
-
-    const { error: uploadError } = await client
-        .storage
-        .from('archivados')
-        .upload(destinationFilePath, fileData, {
-            cacheControl: '3600',
-            upsert: true,
-        });
-
-    if (uploadError) {
-        console.error(`Error al subir el archivo al bucket archivados`, uploadError.message);
-        return;
-    }
-
-    const { error: deleteError } = await client
-        .storage
-        .from(sourceCategory)
-        .remove([originalFilePath]);
-
-    if (deleteError) {
-        console.error(`Error al eliminar el archivo del bucket original`, deleteError.message);
-        return;
-    }
-
-    fileCategories.value[sourceCategory] = fileCategories.value[sourceCategory].filter(f => f.name !== file.name);
-
-    const { data: urlData } = client
-        .storage
-        .from('archivados')
-        .getPublicUrl(`${userId}/${file.name}`);
-
-    const archivedFile = {
-        ...file,
-        url: urlData.publicUrl,
-        category: 'archivados'
-    };
-
-    fileCategories.value.archivados.push(archivedFile);
-
-    console.log(`Archivo archivado correctamente`);
-
-    if (previewFile.value && previewFile.value.name === file.name) {
-        closePreview();
-    }
-};
-
-
-const deleteFile = async (file) => {
-    const userId = user.value?.id;
-    if (!userId) return;
-
-    const filePath = `${userId}/${file.name}`;
-    const category = file.category;
-
-    const { error } = await client
-        .storage
-        .from(category)
-        .remove([filePath]);
-
-    if (error) {
-        console.error(`Error al eliminar archivo`, error.message);
-    } else {
-        fileCategories.value[category] = fileCategories.value[category].filter(f => f.name !== file.name);
-        console.log(`Archivo eliminado correctamente`);
-    }
-};
-
-const uploadDocument = async () => {
-    if (!documentFile.value) {
-        documentUploadError.value = 'Por favor, selecciona un archivo.';
-        return;
-    }
-
-    isUploadingDocument.value = true;
-    documentUploadError.value = null;
-
-    const userId = user.value?.id;
-
-    if (!userId) {
-        documentUploadError.value = 'Debes iniciar sesión';
-        isUploadingDocument.value = false;
-        return;
-    }
-
-    let storageName = '';
-    const fileType = documentFile.value.type;
-    const fileName = documentFile.value.name;
-    const filePath = `${userId}/${fileName}`;
-
-    const typeMap = {
-        'image': 'images',
-        'application': 'documents',
-        'text': 'documents',
-        'audio': 'audios',
-        'video': 'videos'
-    };
-
-    storageName = typeMap[fileType.split('/')[0]];
-
-    if (!storageName) {
-        documentUploadError.value = 'No se pudo determinar la categoría del archivo.';
-        isUploadingDocument.value = false;
-        console.error(`Tipo de archivo no reconocido: ${fileType}`);
-        return;
-    }
-
-    const { data, error } = await client
-        .storage
-        .from(storageName)
-        .upload(filePath, documentFile.value, {
-            cacheControl: '3600',
-            upsert: false,
-        });
-
-    if (error) {
-        console.error(`Error al subir el archivo a ${storageName}:`, error);
-        documentUploadError.value = `Error al subir el archivo: ${error.message}`;
-    } else {
-        console.log(`Archivo subido con éxito a ${storageName}:`, data);
-        await listUserFiles();
-        activeTab.value = 'files';
-    }
-
-    isUploadingDocument.value = false;
-    documentFile.value = null;
-};
 
 const handleDocumentUpload = (event) => {
     documentFile.value = event.target.files[0];
 };
 
-const getUserName = async () => {
-    if (user.value) {
-        const { data, error } = await client
-            .from('users')
-            .select('nombre')
-            .eq('id', user.value.id)
-            .single();
-
-        if (error) {
-            console.error('Error al obtener el nombre del usuario:', error);
-        } else {
-            userName.value = data.nombre;
-        }
+const uploadDocument = async () => {
+    await uploadFile();
+    if (!documentUploadError.value) {
+        activeTab.value = 'files';
     }
 };
-
-const logout = async () => {
-    const { error } = await client.auth.signOut();
-    if (error) {
-        console.error('Error al cerrar sesión:', error);
-    } else {
-        userName.value = '';
-    }
-};
-
-const getFileType = (fileName) => {
-    const extension = fileName.split('.').pop().toLowerCase();
-    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'];
-    const audioExtensions = ['mp3', 'wav', 'ogg', 'aac', 'm4a'];
-    const videoExtensions = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
-
-    if (imageExtensions.includes(extension)) return 'image';
-    if (audioExtensions.includes(extension)) return 'audio';
-    if (videoExtensions.includes(extension)) return 'video';
-    return 'document';
-};
-
-const listUserFiles = async () => {
-    loadingFiles.value = true;
-    fileCategories.value = {
-        documents: [],
-        images: [],
-        audios: [],
-        videos: [],
-        archivados: []
-    };
-
-    const userId = user.value?.id;
-
-    if (userId) {
-
-        const allFileTypes = [
-            ...fileTypes,
-
-        ];
-
-        await Promise.all(allFileTypes.map(async (fileType) => {
-            const { data, error } = await client
-                .storage
-                .from(fileType.value)
-                .list(`${userId}/`);
-
-            if (error) {
-                console.error(`Error al listar archivos de ${fileType.value}:`, error);
-            } else if (data && data.length > 0) {
-                const filesWithUrls = await Promise.all(data.map(async (file) => {
-                    const { data: urlData } = client
-                        .storage
-                        .from(fileType.value)
-                        .getPublicUrl(`${userId}/${file.name}`);
-
-                    const detectedType = getFileType(file.name);
-
-                    return {
-                        ...file,
-                        url: urlData.publicUrl,
-                        type: detectedType,
-                        category: fileType.value
-                    };
-                }));
-
-                fileCategories.value[fileType.value] = filesWithUrls;
-            }
-        }));
-    } else {
-        console.warn('Usuario no autenticado, no se pueden listar los archivos.');
-    }
-
-    loadingFiles.value = false;
-};
-
-const openPreview = (file) => {
-    previewFile.value = file;
-    showPreview.value = true;
-};
-
-const closePreview = () => {
-    showPreview.value = false;
-    previewFile.value = null;
-};
-
-const formatFileSize = (bytes) => {
-    if (!bytes) return '0 B';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-};
-
-const getCategoryCount = (category) => {
-    return fileCategories.value[category].length;
-};
-
-const totalFiles = computed(() => {
-    return Object.values(fileCategories.value).reduce((total, files) => total + files.length, 0);
-});
 
 onMounted(async () => {
     await getUserName();
@@ -294,40 +51,14 @@ onMounted(async () => {
         await listUserFiles();
     }
 });
+
+
 </script>
 
 <template>
     <div class="flex flex-col bg-gradient-to-br from-pink-100 via-purple-200 to-indigo-200 min-h-screen">
         <!-- Navbar -->
-        <nav
-            class="text-pink-800 px-6 py-4 bg-white/80 backdrop-blur-md flex justify-between items-center shadow-md sticky top-0 z-10">
-            <div class="flex items-center space-x-2">
-                <div class="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-2 rounded-lg shadow-md">
-                    <Icon name="material-symbols:cloud-upload" class="text-xl icon-margin-fix" />
-                </div>
-                <h1
-                    class="text-2xl font-bold bg-gradient-to-r from-pink-600 to-purple-700 bg-clip-text text-transparent">
-                    UPLOAD IT</h1>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button v-if="!user" @click="navigateTo('/login')"
-                    class="bg-gradient-to-r from-pink-500 to-purple-600 cursor-pointer text-white py-2 px-4 rounded-md font-medium hover:shadow-lg transition duration-200">
-                    INICIAR SESIÓN
-                </button>
-                <button v-if="user" @click="navigateTo('/profile')"
-                    class="bg-pink-100 text-pink-700 py-2 px-3 rounded-md font-medium hover:bg-pink-200 transition duration-200 flex items-center">
-                    <Icon name="material-symbols:person" class="text-xl" />
-                </button>
-                <button v-if="user" @click="logout()"
-                    class="bg-purple-100 text-purple-700 p-2 cursor-pointer rounded-md font-medium hover:bg-purple-200 transition duration-200">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                </button>
-            </div>
-        </nav>
+        
 
         <main class="flex-grow container mx-auto p-4 md:p-6 xl:max-w-6xl">
             <div v-if="!user" class="mt-10 bg-white/70 backdrop-blur-md rounded-xl shadow-lg p-8 text-center">
@@ -397,7 +128,7 @@ onMounted(async () => {
                                         </div>
                                     </div>
                                     <button @click="documentFile = null" class="text-gray-500 hover:text-red-500">
-                                        <Icon name="material-symbols:close" />
+                                        <Icon name="material-symbols:close" class="cursor-pointer" />
                                     </button>
                                 </div>
 
@@ -407,7 +138,7 @@ onMounted(async () => {
                                         <Icon name="eos-icons:loading" class="animate-spin mr-2" />
                                         Subiendo...
                                     </span>
-                                    <span v-else class="flex items-center">
+                                    <span v-else class="flex items-center cursor-pointer">
                                         <Icon name="material-symbols:upload-file" class="mr-2" />
                                         Subir Archivo
                                     </span>
@@ -507,7 +238,7 @@ onMounted(async () => {
                                                         <Icon name="material-symbols:download" />
                                                     </a>
                                                     <button @click="archiveFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition"
+                                                        class="p-2 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition"
                                                         title="Archivar">
                                                         <Icon name="material-symbols:archive" />
                                                     </button>
@@ -533,7 +264,7 @@ onMounted(async () => {
 
                                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                         <div v-for="file in fileCategories.images" :key="file.name"
-                                            class="group relative rounded-lg overflow-hidden shadow-sm border border-gray-100">
+                                            class="group relative rounded-lg cursor-pointer overflow-hidden shadow-sm border border-gray-100">
                                             <img :src="file.url" :alt="file.name"
                                                 class="h-32 w-full object-cover transition-transform group-hover:scale-105"
                                                 @click="openPreview(file)" />
@@ -544,7 +275,7 @@ onMounted(async () => {
                                             <div
                                                 class="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click.stop="openPreview(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition">
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 cursor-pointer rounded-full hover:bg-white transition">
                                                     <Icon name="material-symbols:preview" class="text-sm" />
                                                 </button>
                                                 <a :href="file.url" target="_blank" download @click.stop
@@ -552,7 +283,7 @@ onMounted(async () => {
                                                     <Icon name="material-symbols:download" class="text-sm" />
                                                 </a>
                                                 <button @click.stop="archiveFile(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition"
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 cursor-pointer rounded-full hover:bg-white transition"
                                                     title="Archivar">
                                                     <Icon name="material-symbols:archive" class="text-sm" />
                                                 </button>
@@ -597,7 +328,7 @@ onMounted(async () => {
                                                         <Icon name="material-symbols:download" />
                                                     </a>
                                                     <button @click="archiveFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition"
+                                                        class="p-2 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition"
                                                         title="Archivar">
                                                         <Icon name="material-symbols:archive" />
                                                     </button>
@@ -628,7 +359,7 @@ onMounted(async () => {
                                     <div class="space-y-4">
                                         <div v-for="file in fileCategories.videos" :key="file.name"
                                             class="bg-gray-50 rounded-lg overflow-hidden">
-                                            <div class="relative group">
+                                            <div  class="relative group cursor-pointer" @click="openPreview(file)" >
                                                 <video class="w-full object-cover h-40 cursor-pointer"
                                                     @click="openPreview(file)">
                                                     <source :src="file.url" type="video/mp4">
@@ -636,9 +367,9 @@ onMounted(async () => {
                                                 </video>
                                                 <div
                                                     class="absolute inset-0 flex    items-center justify-center group-hover:bg-black/30 transition">
-                                                    <button @click="openPreview(file)"
+                                                    <button
                                                         class="bg-white/90 p-3 rounded-full text-blue-600 transform scale-90 group-hover:scale-100 transition">
-                                                        <Icon name="material-symbols:play-arrow" class="text-xl" />
+                                                        <Icon name="material-symbols:play-arrow" class="text-xl cursor-pointer" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -651,7 +382,7 @@ onMounted(async () => {
                                                         <Icon name="material-symbols:download" class="text-sm" />
                                                     </a>
                                                     <button @click="archiveFile(file)"
-                                                        class="p-1.5 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition"
+                                                        class="p-1.5 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition"
                                                         title="Archivar">
                                                         <Icon name="material-symbols:archive" class="text-sm" />
                                                     </button>
@@ -675,7 +406,7 @@ onMounted(async () => {
 
                                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                         <div v-if="fileCategories.archivados.length == 0">
-                                            <p class="font-semibold text-md">No hay archivos</p>
+                                            <p class="flex">No hay archivos </p>
                                         </div>
                                         <div v-else v-for="file in fileCategories.archivados" :key="file.name"
                                             class="group relative rounded-lg overflow-hidden shadow-sm border border-gray-100">
@@ -697,7 +428,7 @@ onMounted(async () => {
                                                     <Icon name="material-symbols:download" class="text-sm" />
                                                 </a>
                                                 <button @click.stop="archiveFile(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition"
+                                                    class="p-1 bg-white/80 text-purple-600 cursor-pointer m-1 rounded-full hover:bg-white transition"
                                                     title="Archivar">
                                                     <Icon name="material-symbols:archive" class="text-sm" />
                                                 </button>
@@ -723,7 +454,7 @@ onMounted(async () => {
                         <h3 class="font-semibold text-lg text-gray-700">{{ previewFile?.name }}</h3>
                         <button @click="closePreview"
                             class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                            <Icon name="material-symbols:close" class="text-2xl" />
+                            <Icon name="material-symbols:close" class="text-2xl cursor-pointer" />
                         </button>
                     </div>
 

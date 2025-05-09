@@ -5,10 +5,13 @@ const users = ref({});
 const isLoading = ref(true);
 const errorMsg = ref(null);
 
+
+
 const userData = async () => {
     isLoading.value = true;
     errorMsg.value = null;
     try {
+        
         const { data, error } = await client
             .from('users')
             .select('nombre, email')
@@ -17,7 +20,30 @@ const userData = async () => {
 
         if (error) {
             console.error('Error al obtener datos del usuario:', error);
-            errorMsg.value = 'Error al cargar la información del perfil.';
+          
+            
+                const userData = {
+                    id: user.value.id,
+                    nombre: user.value.user_metadata?.full_name || 
+                           user.value.user_metadata?.name || 
+                           user.value.email?.split('@')[0] || 
+                           'Usuario',
+                    email: user.value.email
+                };
+                
+                const { data: insertData, error: insertError } = await client
+                    .from('users')
+                    .insert(userData)
+                    .select();
+                
+                if (insertError) {
+                    errorMsg.value = 'Error al crear perfil de usuario.';
+                    console.error('Error al insertar usuario:', insertError);
+                } else {
+                    
+                    users.value = userData;
+                }
+            
         } else {
             users.value = data;
         }
@@ -50,28 +76,6 @@ onMounted(async () => {
 
 <template>
   <div class="flex flex-col bg-gradient-to-br from-pink-100 via-purple-200 to-indigo-200 min-h-screen">
-   
-    <nav class="px-6 py-3 bg-white bg-opacity-75 backdrop-blur-md flex justify-between items-center shadow-md">
-      <div class="p-2">
-        <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">UPLOAD IT</h1>
-      </div>
-      <div class="flex space-x-3">
-        <button @click="navigateTo('/')"
-          class="bg-gradient-to-r from-pink-400 to-pink-500 py-2 px-4 rounded-lg font-medium text-white cursor-pointer hover:opacity-90 transition duration-300 shadow-sm flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-          </svg>
-          INICIO
-        </button>
-        <button @click="cerrarSesion"
-          class="bg-gradient-to-r from-purple-400 to-purple-500 py-2 px-4 rounded-lg font-medium text-white hover:opacity-90 cursor-pointer transition duration-300 shadow-sm flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          SALIR
-        </button>
-      </div>
-    </nav>
 
     <main class="flex-grow container mx-auto p-4 flex flex-col items-center justify-center">
       
