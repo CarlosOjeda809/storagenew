@@ -12,6 +12,7 @@ const fileTypes = [
     { name: 'Imágenes', value: 'images', icon: 'material-symbols:image' },
     { name: 'Audios', value: 'audios', icon: 'material-symbols:audio-file' },
     { name: 'Videos', value: 'videos', icon: 'material-symbols:video-file' },
+    { name: 'Archivados', value: 'archivados', icon: 'material-symbols:archive' }
 ];
 const fileCategories = ref({
     documents: [],
@@ -22,6 +23,70 @@ const fileCategories = ref({
 const previewFile = ref(null);
 const showPreview = ref(false);
 const activeTab = ref('upload');
+
+const archiveFile = async (file) => {
+    const userId = user.value?.id;
+    if (!userId) return;
+
+    const sourceCategory = file.category;
+    const originalFilePath = `${userId}/${file.name}`;
+    const destinationFilePath = `${userId}/${file.name}`;
+
+    const { data: fileData, error: downloadError } = await client
+        .storage
+        .from(sourceCategory)
+        .download(originalFilePath);
+
+    if (downloadError) {
+        console.error(`Error al descargar el archivo para archivar`, downloadError.message);
+        return;
+    }
+
+    const { error: uploadError } = await client
+        .storage
+        .from('archivados')
+        .upload(destinationFilePath, fileData, {
+            cacheControl: '3600',
+            upsert: true,
+        });
+
+    if (uploadError) {
+        console.error(`Error al subir el archivo al bucket archivados`, uploadError.message);
+        return;
+    }
+
+    const { error: deleteError } = await client
+        .storage
+        .from(sourceCategory)
+        .remove([originalFilePath]);
+
+    if (deleteError) {
+        console.error(`Error al eliminar el archivo del bucket original`, deleteError.message);
+        return;
+    }
+
+    fileCategories.value[sourceCategory] = fileCategories.value[sourceCategory].filter(f => f.name !== file.name);
+
+    const { data: urlData } = client
+        .storage
+        .from('archivados')
+        .getPublicUrl(`${userId}/${file.name}`);
+
+    const archivedFile = {
+        ...file,
+        url: urlData.publicUrl,
+        category: 'archivados'
+    };
+
+    fileCategories.value.archivados.push(archivedFile);
+
+    console.log(`Archivo archivado correctamente`);
+
+    if (previewFile.value && previewFile.value.name === file.name) {
+        closePreview();
+    }
+};
+
 
 const deleteFile = async (file) => {
     const userId = user.value?.id;
@@ -96,7 +161,7 @@ const uploadDocument = async () => {
     } else {
         console.log(`Archivo subido con éxito a ${storageName}:`, data);
         await listUserFiles();
-        activeTab.value = 'files'; // Cambiar a la pestaña de archivos después de subir
+        activeTab.value = 'files';
     }
 
     isUploadingDocument.value = false;
@@ -150,13 +215,20 @@ const listUserFiles = async () => {
         documents: [],
         images: [],
         audios: [],
-        videos: []
+        videos: [],
+        archivados: []
     };
 
     const userId = user.value?.id;
 
     if (userId) {
-        await Promise.all(fileTypes.map(async (fileType) => {
+
+        const allFileTypes = [
+            ...fileTypes,
+
+        ];
+
+        await Promise.all(allFileTypes.map(async (fileType) => {
             const { data, error } = await client
                 .storage
                 .from(fileType.value)
@@ -349,7 +421,7 @@ onMounted(async () => {
                         </div>
 
                         <div class="mt-6 bg-white/80 rounded-lg p-4">
-                            <h3 class="font-medium text-gray-700 mb-2">Tipos de archivos compatibles:</h3>
+                            <h3 class="font-medium text-gray-700 mb-2">Secciones:</h3>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div v-for="type in fileTypes" :key="type.value"
                                     class="bg-white p-3 rounded-md shadow-sm border border-gray-100 flex items-center">
@@ -434,6 +506,11 @@ onMounted(async () => {
                                                         class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
                                                         <Icon name="material-symbols:download" />
                                                     </a>
+                                                    <button @click="archiveFile(file)"
+                                                        class="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition"
+                                                        title="Archivar">
+                                                        <Icon name="material-symbols:archive" />
+                                                    </button>
                                                     <button @click="deleteFile(file)"
                                                         class="p-2 text-gray-600 hover:text-red-600 cursor-pointer hover:bg-red-50 rounded-full transition">
                                                         <Icon name="material-symbols:delete" />
@@ -474,6 +551,11 @@ onMounted(async () => {
                                                     class="p-1 bg-white/80 text-pink-600 m-1 rounded-full hover:bg-white transition">
                                                     <Icon name="material-symbols:download" class="text-sm" />
                                                 </a>
+                                                <button @click.stop="archiveFile(file)"
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition"
+                                                    title="Archivar">
+                                                    <Icon name="material-symbols:archive" class="text-sm" />
+                                                </button>
                                                 <button @click.stop="deleteFile(file)"
                                                     class="p-1 bg-white/80 text-red-600 m-1 rounded-full cursor-pointer hover:bg-white transition">
                                                     <Icon name="material-symbols:delete" class="text-sm" />
@@ -514,6 +596,11 @@ onMounted(async () => {
                                                         class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
                                                         <Icon name="material-symbols:download" />
                                                     </a>
+                                                    <button @click="archiveFile(file)"
+                                                        class="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition"
+                                                        title="Archivar">
+                                                        <Icon name="material-symbols:archive" />
+                                                    </button>
                                                     <button @click="deleteFile(file)"
                                                         class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition">
                                                         <Icon name="material-symbols:delete" />
@@ -563,6 +650,11 @@ onMounted(async () => {
                                                         class="p-1.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
                                                         <Icon name="material-symbols:download" class="text-sm" />
                                                     </a>
+                                                    <button @click="archiveFile(file)"
+                                                        class="p-1.5 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition"
+                                                        title="Archivar">
+                                                        <Icon name="material-symbols:archive" class="text-sm" />
+                                                    </button>
                                                     <button @click="deleteFile(file)"
                                                         class="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition">
                                                         <Icon name="material-symbols:delete" class="text-sm" />
@@ -572,6 +664,52 @@ onMounted(async () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                                    <div class="flex items-center mb-4">
+                                        <div class="p-2 bg-purple-100 rounded-lg mr-3">
+                                            <Icon :name="fileTypes[1].icon" class="text-purple-700 text-xl" />
+                                        </div>
+                                        <h3 class="font-semibold text-lg text-gray-800">{{ fileTypes[4].name }}</h3>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <div v-if="fileCategories.archivados.length == 0">
+                                            <p class="font-semibold text-md">No hay archivos</p>
+                                        </div>
+                                        <div v-else v-for="file in fileCategories.archivados" :key="file.name"
+                                            class="group relative rounded-lg overflow-hidden shadow-sm border border-gray-100">
+                                            <img :src="file.url" :alt="file.name"
+                                                class="h-32 w-full object-cover transition-transform group-hover:scale-105"
+                                                @click="openPreview(file)" />
+                                            <div
+                                                class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                                                <p class="text-white text-xs truncate">{{ file.name }}</p>
+                                            </div>
+                                            <div
+                                                class="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button @click.stop="openPreview(file)"
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition">
+                                                    <Icon name="material-symbols:preview" class="text-sm" />
+                                                </button>
+                                                <a :href="file.url" target="_blank" download @click.stop
+                                                    class="p-1 bg-white/80 text-pink-600 m-1 rounded-full hover:bg-white transition">
+                                                    <Icon name="material-symbols:download" class="text-sm" />
+                                                </a>
+                                                <button @click.stop="archiveFile(file)"
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition"
+                                                    title="Archivar">
+                                                    <Icon name="material-symbols:archive" class="text-sm" />
+                                                </button>
+                                                <button @click.stop="deleteFile(file)"
+                                                    class="p-1 bg-white/80 text-red-600 m-1 rounded-full cursor-pointer hover:bg-white transition">
+                                                    <Icon name="material-symbols:delete" class="text-sm" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -610,6 +748,11 @@ onMounted(async () => {
                             class="px-4 py-2 border border-red-200 text-red-600 rounded-md cursor-pointer hover:bg-red-50 flex items-center transition">
                             <Icon name="material-symbols:delete" class="mr-2" />
                             Eliminar
+                        </button>
+                        <button @click="archiveFile(previewFile); closePreview()"
+                            class="px-4 py-2 border border-purple-200 text-purple-600 rounded-md cursor-pointer hover:bg-purple-50 flex items-center transition">
+                            <Icon name="material-symbols:archive" class="mr-2" />
+                            Archivar
                         </button>
                         <a :href="previewFile?.url" download
                             class="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-md hover:shadow-md transition flex items-center">
