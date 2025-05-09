@@ -145,11 +145,62 @@ export function filemanager() {
         return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
     };
 
+
+    const restoreFile = async (file) => {
+        if (!user.value) return;
+
+        const fileType = getFileType(file.name);
+        let targetBucket = 'documents';
+
+        if (fileType === 'image') targetBucket = 'images';
+        else if (fileType === 'audio') targetBucket = 'audios';
+        else if (fileType === 'video') targetBucket = 'videos';
+
+        const path = `${user.value.id}/${file.name}`;
+
+        const { data: fileData, error: downloadError } = await client
+            .storage
+            .from('archivados')
+            .download(path);
+
+        if (downloadError) return console.error('Error al descargar', downloadError.message);
+
+        const { error: uploadError } = await client
+            .storage
+            .from(targetBucket)
+            .upload(path, fileData, { cacheControl: '3600', upsert: true });
+
+        if (uploadError) return console.error('Error al restaurar', uploadError.message);
+
+        
+        await client
+            .storage
+            .from('archivados')
+            .remove([path]);
+
+        
+        fileCategories.value.archivados = fileCategories.value.archivados.filter(f => f.name !== file.name);
+
+        
+        const { data: urlData } = client
+            .storage
+            .from(targetBucket)
+            .getPublicUrl(path);
+
+        
+        fileCategories.value[targetBucket].push({
+            ...file,
+            url: urlData.publicUrl,
+            category: targetBucket
+        });
+    };
+
     return {
         fileCategories,
         loadingFiles,
         listUserFiles,
         archiveFile,
+        restoreFile, 
         deleteFile,
         getCategoryCount,
         totalFiles,

@@ -11,18 +11,19 @@ const {
     listUserFiles,
     archiveFile,
     deleteFile,
+    restoreFile,
     getCategoryCount,
     totalFiles,
     formatFileSize,
     getFileType
-} = filemanager(user); 
+} = filemanager(user);
 const { previewFile, showPreview, openPreview, closePreview } = filepreview();
 const {
     documentFile,
     isUploadingDocument,
     documentUploadError,
     uploadDocument: uploadFile
-} = fileupload(user, listUserFiles); 
+} = fileupload(user, listUserFiles);
 
 const router = useRouter();
 const activeTab = ref('upload');
@@ -57,12 +58,14 @@ onMounted(async () => {
 
 <template>
     <div class="flex flex-col bg-gradient-to-br from-pink-100 via-purple-200 to-indigo-200 min-h-screen">
-        <!-- Navbar -->
-        
+
+
 
         <main class="flex-grow container mx-auto p-4 md:p-6 xl:max-w-6xl">
             <div v-if="!user" class="mt-10 bg-white/70 backdrop-blur-md rounded-xl shadow-lg p-8 text-center">
-                <Icon name="material-symbols:lock" class="text-5xl text-pink-600 mb-4" />
+                <div class="flex justify-center">
+                    <Icon name="material-symbols:lock" class="text-5xl text-pink-600 mb-4 leading-none" />
+                </div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-3">Inicia sesión para gestionar tus archivos</h2>
                 <p class="text-gray-600 mb-6">Necesitas iniciar sesión para subir y administrar tus archivos.</p>
                 <button @click="navigateTo('/login')"
@@ -72,23 +75,22 @@ onMounted(async () => {
             </div>
 
             <div v-if="user">
-
                 <div class="bg-white/70 backdrop-blur-md rounded-xl shadow-lg mt-6 overflow-hidden">
                     <div class="flex border-b border-gray-200">
                         <button @click="activeTab = 'upload'"
                             :class="['flex-1 py-4 text-center cursor-pointer font-medium transition duration-200',
                                 activeTab === 'upload' ? 'text-pink-600 border-b-2 border-pink-500' : 'text-gray-600 hover:text-pink-500']">
-                            <div class="flex items-center  justify-center">
-                                <Icon name="material-symbols:upload" class="mr-2" />
-                                Subir Archivos
+                            <div class="flex items-center justify-center">
+                                <Icon name="material-symbols:upload" class="mr-2 flex-shrink-0 leading-none" />
+                                <span>Subir Archivos</span>
                             </div>
                         </button>
                         <button @click="activeTab = 'files'"
                             :class="['flex-1 py-4 text-center font-medium transition duration-200',
                                 activeTab === 'files' ? 'text-pink-600 border-b-2 border-pink-500' : 'text-gray-600 hover:text-pink-500']">
                             <div class="flex items-center cursor-pointer justify-center">
-                                <Icon name="material-symbols:folder" class="mr-2" />
-                                Mis Archivos
+                                <Icon name="material-symbols:folder" class="mr-2 flex-shrink-0 leading-none" />
+                                <span>Mis Archivos</span>
                                 <span v-if="totalFiles > 0"
                                     class="ml-2 bg-pink-100 text-pink-700 text-xs px-2 py-1 rounded-full">
                                     {{ totalFiles }}
@@ -96,7 +98,6 @@ onMounted(async () => {
                             </div>
                         </button>
                     </div>
-
 
                     <div v-if="activeTab === 'upload'" class="p-6">
                         <div class="text-center mb-6">
@@ -106,21 +107,25 @@ onMounted(async () => {
 
                         <div
                             class="border-2 border-dashed border-pink-300 rounded-xl p-8 bg-pink-50/50 flex flex-col items-center justify-center">
-                            <Icon name="material-symbols:cloud-upload" class="text-6xl text-pink-400 mb-4" />
+                            <div class="flex justify-center">
+                                <Icon name="material-symbols:cloud-upload"
+                                    class="text-6xl text-pink-400 mb-4 leading-none" />
+                            </div>
 
                             <div class="flex flex-col items-center w-full max-w-md">
                                 <input type="file" class="hidden" id="document-upload"
                                     @change="handleDocumentUpload($event)" />
                                 <label for="document-upload"
                                     class="w-full mt-4 py-3 px-6 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg cursor-pointer hover:shadow-lg transition duration-200 text-center flex items-center justify-center space-x-2">
-                                    <Icon name="material-symbols:attach-file" class="mr-2" />
-                                    Seleccionar Archivo
+                                    <Icon name="material-symbols:attach-file" class="mr-2 flex-shrink-0 leading-none" />
+                                    <span>Seleccionar Archivo</span>
                                 </label>
 
                                 <div v-if="documentFile"
                                     class="mt-4 p-4 bg-white/80 rounded-lg w-full flex items-center justify-between">
                                     <div class="flex items-center">
-                                        <Icon name="material-symbols:insert-drive-file" class="text-pink-500 mr-2" />
+                                        <Icon name="material-symbols:insert-drive-file"
+                                            class="text-pink-500 mr-2 flex-shrink-0 leading-none" />
                                         <div>
                                             <p class="font-medium text-gray-800 truncate max-w-xs">{{ documentFile.name
                                                 }}</p>
@@ -128,19 +133,21 @@ onMounted(async () => {
                                         </div>
                                     </div>
                                     <button @click="documentFile = null" class="text-gray-500 hover:text-red-500">
-                                        <Icon name="material-symbols:close" class="cursor-pointer" />
+                                        <Icon name="material-symbols:close" class="cursor-pointer leading-none" />
                                     </button>
                                 </div>
 
                                 <button @click="uploadDocument" :disabled="isUploadingDocument || !documentFile"
                                     class="mt-6 py-3 px-8 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-200 flex items-center justify-center w-64">
                                     <span v-if="isUploadingDocument" class="flex items-center">
-                                        <Icon name="eos-icons:loading" class="animate-spin mr-2" />
-                                        Subiendo...
+                                        <Icon name="eos-icons:loading"
+                                            class="animate-spin mr-2 flex-shrink-0 leading-none" />
+                                        <span>Subiendo...</span>
                                     </span>
                                     <span v-else class="flex items-center cursor-pointer">
-                                        <Icon name="material-symbols:upload-file" class="mr-2" />
-                                        Subir Archivo
+                                        <Icon name="material-symbols:upload-file"
+                                            class="mr-2 flex-shrink-0 leading-none" />
+                                        <span>Subir Archivo</span>
                                     </span>
                                 </button>
 
@@ -156,7 +163,7 @@ onMounted(async () => {
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                 <div v-for="type in fileTypes" :key="type.value"
                                     class="bg-white p-3 rounded-md shadow-sm border border-gray-100 flex items-center">
-                                    <Icon :name="type.icon" class="text-pink-600 mr-2" />
+                                    <Icon :name="type.icon" class="text-pink-600 mr-2 flex-shrink-0 leading-none" />
                                     <span class="text-gray-700">{{ type.name }}</span>
                                 </div>
                             </div>
@@ -176,12 +183,16 @@ onMounted(async () => {
                         </div>
 
                         <div v-if="loadingFiles" class="flex justify-center items-center py-12">
-                            <Icon name="eos-icons:loading" class="animate-spin text-4xl text-pink-600" />
+                            <Icon name="eos-icons:loading"
+                                class="animate-spin text-4xl text-pink-600 flex-shrink-0 leading-none" />
                             <span class="ml-3 text-gray-600">Cargando tus archivos...</span>
                         </div>
 
                         <div v-else-if="totalFiles === 0" class="bg-white/80 rounded-xl p-8 text-center">
-                            <Icon name="material-symbols:folder-off" class="text-5xl text-gray-400 mb-4" />
+                            <div class="flex justify-center">
+                                <Icon name="material-symbols:folder-off"
+                                    class="text-5xl text-gray-400 mb-4 leading-none" />
+                            </div>
                             <h3 class="text-xl font-medium text-gray-700 mb-2">No tienes archivos aún</h3>
                             <p class="text-gray-500 mb-6">¡Comienza a subir tus archivos para verlos aquí!</p>
                             <button @click="activeTab = 'upload'"
@@ -196,8 +207,8 @@ onMounted(async () => {
                                 <button v-for="type in fileTypes" :key="type.value"
                                     :class="['mr-6 py-2 px-3 font-medium flex items-center transition duration-200',
                                         getCategoryCount(type.value) > 0 ? 'text-pink-600 border-b-2 border-pink-500' : 'text-gray-400']">
-                                    <Icon :name="type.icon" class="mr-2" />
-                                    {{ type.name }}
+                                    <Icon :name="type.icon" class="mr-2 flex-shrink-0 leading-none" />
+                                    <span>{{ type.name }}</span>
                                     <span v-if="getCategoryCount(type.value) > 0"
                                         class="ml-2 bg-pink-100 text-pink-700 text-xs px-2 py-0.5 rounded-full">
                                         {{ getCategoryCount(type.value) }}
@@ -210,8 +221,9 @@ onMounted(async () => {
                                 <div v-if="fileCategories.documents.length > 0"
                                     class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                                     <div class="flex items-center mb-4">
-                                        <div class="p-2 bg-pink-100 rounded-lg mr-3">
-                                            <Icon :name="fileTypes[0].icon" class="text-pink-700 text-xl" />
+                                        <div class="p-2 bg-pink-100 rounded-lg mr-3 flex items-center justify-center">
+                                            <Icon :name="fileTypes[0].icon"
+                                                class="text-pink-700 text-xl leading-none" />
                                         </div>
                                         <h3 class="font-semibold text-lg text-gray-800">{{ fileTypes[0].name }}</h3>
                                     </div>
@@ -221,9 +233,10 @@ onMounted(async () => {
                                             class="py-4 first:pt-1 hover:bg-pink-50/50 transition duration-200 rounded-md px-2">
                                             <div class="flex justify-between items-center">
                                                 <div class="flex items-center space-x-3 flex-1 min-w-0">
-                                                    <div class="p-2 bg-pink-100 rounded-md">
+                                                    <div
+                                                        class="p-2 bg-pink-100 rounded-md flex items-center justify-center">
                                                         <Icon name="material-symbols:description"
-                                                            class="text-pink-600" />
+                                                            class="text-pink-600 leading-none" />
                                                     </div>
                                                     <div class="min-w-0">
                                                         <p class="font-medium text-gray-800 truncate">{{ file.name }}
@@ -234,17 +247,17 @@ onMounted(async () => {
                                                 </div>
                                                 <div class="flex items-center space-x-1">
                                                     <a :href="file.url" target="_blank" download
-                                                        class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
-                                                        <Icon name="material-symbols:download" />
+                                                        class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:download" class="leading-none" />
                                                     </a>
                                                     <button @click="archiveFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition"
+                                                        class="p-2 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition flex items-center justify-center"
                                                         title="Archivar">
-                                                        <Icon name="material-symbols:archive" />
+                                                        <Icon name="material-symbols:archive" class="leading-none" />
                                                     </button>
                                                     <button @click="deleteFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-red-600 cursor-pointer hover:bg-red-50 rounded-full transition">
-                                                        <Icon name="material-symbols:delete" />
+                                                        class="p-2 text-gray-600 hover:text-red-600 cursor-pointer hover:bg-red-50 rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:delete" class="leading-none" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -256,8 +269,9 @@ onMounted(async () => {
                                 <div v-if="fileCategories.images.length > 0"
                                     class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                                     <div class="flex items-center mb-4">
-                                        <div class="p-2 bg-purple-100 rounded-lg mr-3">
-                                            <Icon :name="fileTypes[1].icon" class="text-purple-700 text-xl" />
+                                        <div class="p-2 bg-purple-100 rounded-lg mr-3 flex items-center justify-center">
+                                            <Icon :name="fileTypes[1].icon"
+                                                class="text-purple-700 text-xl leading-none" />
                                         </div>
                                         <h3 class="font-semibold text-lg text-gray-800">{{ fileTypes[1].name }}</h3>
                                     </div>
@@ -275,21 +289,24 @@ onMounted(async () => {
                                             <div
                                                 class="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button @click.stop="openPreview(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 m-1 cursor-pointer rounded-full hover:bg-white transition">
-                                                    <Icon name="material-symbols:preview" class="text-sm" />
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 cursor-pointer rounded-full hover:bg-white transition flex items-center justify-center">
+                                                    <Icon name="material-symbols:preview"
+                                                        class="text-sm leading-none" />
                                                 </button>
                                                 <a :href="file.url" target="_blank" download @click.stop
-                                                    class="p-1 bg-white/80 text-pink-600 m-1 rounded-full hover:bg-white transition">
-                                                    <Icon name="material-symbols:download" class="text-sm" />
+                                                    class="p-1 bg-white/80 text-pink-600 m-1 rounded-full hover:bg-white transition flex items-center justify-center">
+                                                    <Icon name="material-symbols:download"
+                                                        class="text-sm leading-none" />
                                                 </a>
                                                 <button @click.stop="archiveFile(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 m-1 cursor-pointer rounded-full hover:bg-white transition"
+                                                    class="p-1 bg-white/80 text-purple-600 m-1 cursor-pointer rounded-full hover:bg-white transition flex items-center justify-center"
                                                     title="Archivar">
-                                                    <Icon name="material-symbols:archive" class="text-sm" />
+                                                    <Icon name="material-symbols:archive"
+                                                        class="text-sm leading-none" />
                                                 </button>
                                                 <button @click.stop="deleteFile(file)"
-                                                    class="p-1 bg-white/80 text-red-600 m-1 rounded-full cursor-pointer hover:bg-white transition">
-                                                    <Icon name="material-symbols:delete" class="text-sm" />
+                                                    class="p-1 bg-white/80 text-red-600 m-1 rounded-full cursor-pointer hover:bg-white transition flex items-center justify-center">
+                                                    <Icon name="material-symbols:delete" class="text-sm leading-none" />
                                                 </button>
                                             </div>
                                         </div>
@@ -300,8 +317,9 @@ onMounted(async () => {
                                 <div v-if="fileCategories.audios.length > 0"
                                     class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                                     <div class="flex items-center mb-4">
-                                        <div class="p-2 bg-indigo-100 rounded-lg mr-3">
-                                            <Icon :name="fileTypes[2].icon" class="text-indigo-700 text-xl" />
+                                        <div class="p-2 bg-indigo-100 rounded-lg mr-3 flex items-center justify-center">
+                                            <Icon :name="fileTypes[2].icon"
+                                                class="text-indigo-700 text-xl leading-none" />
                                         </div>
                                         <h3 class="font-semibold text-lg text-gray-800">{{ fileTypes[2].name }}</h3>
                                     </div>
@@ -311,30 +329,32 @@ onMounted(async () => {
                                             class="py-4 first:pt-1">
                                             <div class="flex justify-between items-center mb-2">
                                                 <div class="flex items-center space-x-3">
-                                                    <div class="p-2 bg-indigo-100 rounded-md">
+                                                    <div
+                                                        class="p-2 bg-indigo-100 rounded-md flex items-center justify-center">
                                                         <Icon name="material-symbols:audio-file"
-                                                            class="text-indigo-600" />
+                                                            class="text-indigo-600 leading-none" />
                                                     </div>
                                                     <span class="font-medium text-gray-800 truncate max-w-xs">{{
                                                         file.name }}</span>
                                                 </div>
                                                 <div class="flex items-center space-x-1">
                                                     <button @click="openPreview(file)"
-                                                        class="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition">
-                                                        <Icon name="material-symbols:play-circle" />
+                                                        class="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:play-circle"
+                                                            class="leading-none" />
                                                     </button>
                                                     <a :href="file.url" target="_blank" download
-                                                        class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
-                                                        <Icon name="material-symbols:download" />
+                                                        class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:download" class="leading-none" />
                                                     </a>
                                                     <button @click="archiveFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition"
+                                                        class="p-2 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition flex items-center justify-center"
                                                         title="Archivar">
-                                                        <Icon name="material-symbols:archive" />
+                                                        <Icon name="material-symbols:archive" class="leading-none" />
                                                     </button>
                                                     <button @click="deleteFile(file)"
-                                                        class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition">
-                                                        <Icon name="material-symbols:delete" />
+                                                        class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:delete" class="leading-none" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -350,8 +370,9 @@ onMounted(async () => {
                                 <div v-if="fileCategories.videos.length > 0"
                                     class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                                     <div class="flex items-center mb-4">
-                                        <div class="p-2 bg-blue-100 rounded-lg mr-3">
-                                            <Icon :name="fileTypes[3].icon" class="text-blue-700 text-xl" />
+                                        <div class="p-2 bg-blue-100 rounded-lg mr-3 flex items-center justify-center">
+                                            <Icon :name="fileTypes[3].icon"
+                                                class="text-blue-700 text-xl leading-none" />
                                         </div>
                                         <h3 class="font-semibold text-lg text-gray-800">{{ fileTypes[3].name }}</h3>
                                     </div>
@@ -359,17 +380,18 @@ onMounted(async () => {
                                     <div class="space-y-4">
                                         <div v-for="file in fileCategories.videos" :key="file.name"
                                             class="bg-gray-50 rounded-lg overflow-hidden">
-                                            <div  class="relative group cursor-pointer" @click="openPreview(file)" >
+                                            <div class="relative group cursor-pointer" @click="openPreview(file)">
                                                 <video class="w-full object-cover h-40 cursor-pointer"
                                                     @click="openPreview(file)">
                                                     <source :src="file.url" type="video/mp4">
                                                     Tu navegador no soporta la reproducción de video.
                                                 </video>
                                                 <div
-                                                    class="absolute inset-0 flex    items-center justify-center group-hover:bg-black/30 transition">
+                                                    class="absolute inset-0 flex items-center justify-center group-hover:bg-black/30 transition">
                                                     <button
-                                                        class="bg-white/90 p-3 rounded-full text-blue-600 transform scale-90 group-hover:scale-100 transition">
-                                                        <Icon name="material-symbols:play-arrow" class="text-xl cursor-pointer" />
+                                                        class="bg-white/90 p-3 rounded-full text-blue-600 transform scale-90 group-hover:scale-100 transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:play-arrow"
+                                                            class="text-xl cursor-pointer leading-none" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -378,17 +400,20 @@ onMounted(async () => {
                                                     }}</span>
                                                 <div class="flex space-x-1">
                                                     <a :href="file.url" target="_blank" download
-                                                        class="p-1.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition">
-                                                        <Icon name="material-symbols:download" class="text-sm" />
+                                                        class="p-1.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:download"
+                                                            class="text-sm leading-none" />
                                                     </a>
                                                     <button @click="archiveFile(file)"
-                                                        class="p-1.5 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition"
+                                                        class="p-1.5 text-gray-600 hover:text-purple-600 cursor-pointer hover:bg-purple-50 rounded-full transition flex items-center justify-center"
                                                         title="Archivar">
-                                                        <Icon name="material-symbols:archive" class="text-sm" />
+                                                        <Icon name="material-symbols:archive"
+                                                            class="text-sm leading-none" />
                                                     </button>
                                                     <button @click="deleteFile(file)"
-                                                        class="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition">
-                                                        <Icon name="material-symbols:delete" class="text-sm" />
+                                                        class="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition flex items-center justify-center">
+                                                        <Icon name="material-symbols:delete"
+                                                            class="text-sm leading-none" />
                                                     </button>
                                                 </div>
                                             </div>
@@ -398,49 +423,65 @@ onMounted(async () => {
 
                                 <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                                     <div class="flex items-center mb-4">
-                                        <div class="p-2 bg-purple-100 rounded-lg mr-3">
-                                            <Icon :name="fileTypes[1].icon" class="text-purple-700 text-xl" />
+                                        <div class="p-2 bg-gray-100 rounded-lg mr-3 flex items-center justify-center">
+                                            <Icon :name="fileTypes[4].icon"
+                                                class="text-gray-700 text-xl leading-none" />
                                         </div>
                                         <h3 class="font-semibold text-lg text-gray-800">{{ fileTypes[4].name }}</h3>
                                     </div>
 
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    <div v-if="fileCategories.archivados.length > 0" class="grid grid-cols-1 gap-3">
                                         <div v-if="fileCategories.archivados.length == 0">
-                                            <p class="flex">No hay archivos </p>
+                                            <p class="text-gray-500">No hay archivos archivados</p>
                                         </div>
                                         <div v-else v-for="file in fileCategories.archivados" :key="file.name"
-                                            class="group relative rounded-lg overflow-hidden shadow-sm border border-gray-100">
-                                            <img :src="file.url" :alt="file.name"
-                                                class="h-32 w-full object-cover transition-transform group-hover:scale-105"
-                                                @click="openPreview(file)" />
-                                            <div
-                                                class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                                                <p class="text-white text-xs truncate">{{ file.name }}</p>
+                                            class="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition">
+                                            <div class="flex items-center space-x-3 flex-1 min-w-0">
+                                                <div
+                                                    class="p-2 bg-gray-200 rounded-md flex items-center justify-center">
+                                                    <Icon v-if="getFileType(file.name) === 'image'"
+                                                        name="material-symbols:image"
+                                                        class="text-purple-600 leading-none" />
+                                                    <Icon v-else-if="getFileType(file.name) === 'audio'"
+                                                        name="material-symbols:audio-file"
+                                                        class="text-indigo-600 leading-none" />
+                                                    <Icon v-else-if="getFileType(file.name) === 'video'"
+                                                        name="material-symbols:video-file"
+                                                        class="text-blue-600 leading-none" />
+                                                    <Icon v-else name="material-symbols:description"
+                                                        class="text-pink-600 leading-none" />
+                                                </div>
+                                                <div class="min-w-0">
+                                                    <p class="font-medium text-gray-800 truncate">{{ file.name }}</p>
+                                                    <p class="text-xs text-gray-500">{{ formatFileSize(file.size) }}</p>
+                                                </div>
                                             </div>
-                                            <div
-                                                class="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button @click.stop="openPreview(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 m-1 rounded-full hover:bg-white transition">
-                                                    <Icon name="material-symbols:preview" class="text-sm" />
+                                            <div class="flex items-center space-x-1">
+                                                <button @click="openPreview(file)"
+                                                    class="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-full transition flex items-center justify-center">
+                                                    <Icon name="material-symbols:preview" class="leading-none" />
                                                 </button>
-                                                <a :href="file.url" target="_blank" download @click.stop
-                                                    class="p-1 bg-white/80 text-pink-600 m-1 rounded-full hover:bg-white transition">
-                                                    <Icon name="material-symbols:download" class="text-sm" />
+                                                <a :href="file.url" target="_blank" download
+                                                    class="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-full transition flex items-center justify-center">
+                                                    <Icon name="material-symbols:download" class="leading-none" />
                                                 </a>
-                                                <button @click.stop="archiveFile(file)"
-                                                    class="p-1 bg-white/80 text-purple-600 cursor-pointer m-1 rounded-full hover:bg-white transition"
-                                                    title="Archivar">
-                                                    <Icon name="material-symbols:archive" class="text-sm" />
+                                                <button @click="restoreFile(file)"
+                                                    class="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 cursor-pointer rounded-full transition flex items-center justify-center"
+                                                    title="Restaurar archivo">
+                                                    <Icon name="material-symbols:restore-page-rounded"
+                                                        class="leading-none" />
                                                 </button>
-                                                <button @click.stop="deleteFile(file)"
-                                                    class="p-1 bg-white/80 text-red-600 m-1 rounded-full cursor-pointer hover:bg-white transition">
-                                                    <Icon name="material-symbols:delete" class="text-sm" />
+                                                <button @click="deleteFile(file)"
+                                                    class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 cursor-pointer rounded-full transition flex items-center justify-center">
+                                                    <Icon name="material-symbols:delete" class="leading-none" />
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
+                                    <div v-else>
+                                        <p class="text-gray-500">No hay archivos archivados</p>
+                                    </div>
                                 </div>
-
                             </div>
                         </div>
                     </div>
@@ -453,8 +494,8 @@ onMounted(async () => {
                     <div class="p-4 border-b border-gray-200 flex justify-between items-center">
                         <h3 class="font-semibold text-lg text-gray-700">{{ previewFile?.name }}</h3>
                         <button @click="closePreview"
-                            class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
-                            <Icon name="material-symbols:close" class="text-2xl cursor-pointer" />
+                            class="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 flex items-center justify-center">
+                            <Icon name="material-symbols:close" class="text-2xl cursor-pointer leading-none" />
                         </button>
                     </div>
 
@@ -474,17 +515,27 @@ onMounted(async () => {
                         </video>
                     </div>
 
+                   
+
                     <div class="p-4 border-t border-gray-200 flex justify-end space-x-3">
                         <button @click="deleteFile(previewFile)"
                             class="px-4 py-2 border border-red-200 text-red-600 rounded-md cursor-pointer hover:bg-red-50 flex items-center transition">
                             <Icon name="material-symbols:delete" class="mr-2" />
                             Eliminar
                         </button>
-                        <button @click="archiveFile(previewFile); closePreview()"
+
+                        <button v-if="previewFile?.category === 'archivados'"
+                            @click="restoreFile(previewFile); closePreview()"
+                            class="px-4 py-2 border border-green-200 text-green-600 rounded-md cursor-pointer hover:bg-green-50 flex items-center transition">
+                            <Icon name="material-symbols:restore" class="mr-2" />
+                            Restaurar
+                        </button>
+                        <button v-else @click="archiveFile(previewFile); closePreview()"
                             class="px-4 py-2 border border-purple-200 text-purple-600 rounded-md cursor-pointer hover:bg-purple-50 flex items-center transition">
                             <Icon name="material-symbols:archive" class="mr-2" />
                             Archivar
                         </button>
+
                         <a :href="previewFile?.url" download
                             class="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-4 py-2 rounded-md hover:shadow-md transition flex items-center">
                             <Icon name="material-symbols:download" class="mr-2" />
@@ -496,9 +547,3 @@ onMounted(async () => {
         </main>
     </div>
 </template>
-
-<style scoped>
-.icon-margin-fix {
-    vertical-align: bottom;
-}
-</style>
